@@ -11,15 +11,17 @@ Página única, sem build: `index.html` é o arquivo que vai pro ar.
 capa → nome → @ do Instagram → WhatsApp → faturamento → investimento → agendamento
 ```
 
-A pessoa é classificada em três níveis:
+Todo mundo responde as duas perguntas. **Quem decide o desfecho é a resposta do
+investimento**; o faturamento só separa A de B.
 
 | Nível | Regra | Para onde vai |
 |---|---|---|
-| **A** | fatura acima de 30k **e** toparia investir ~R$ 1.000/mês | tela de agendamento (Calendly) |
-| **B** | fatura acima de 30k, mas "não é o meu momento" | tela de agendamento (Calendly) |
-| **C** | fatura até 30k | tela de obrigado — nem vê a pergunta do investimento |
+| **A** | toparia investir **e** fatura acima de 30k | tela de agendamento (Calendly) |
+| **B** | toparia investir, mas fatura até 30k | tela de agendamento (Calendly) |
+| **C** | "não é o meu momento" (qualquer faturamento) | tela de obrigado |
 
-A regra vive na constante `FATURAMENTO_NIVEL_C` no topo do `<script>`.
+A regra vive na função `nivelDoLead()` e na constante `FATURAMENTO_NIVEL_B` no
+topo do `<script>`.
 
 ## Arquivos
 
@@ -62,20 +64,22 @@ evento do dataLayer abaixo vira uma tag `trackCustom`.
 | `agendou_reuniao` | — | o Calendly avisou que a reunião foi marcada |
 | `lead_classificado` | — | genérico, com `nivel` como parâmetro |
 
-Ao ler o funil no Meta: **nível C não passa pela Etapa 6** (é filtro proposital,
-não gargalo). O número comparável com a Etapa 6 é `Etapa5_Faturamento − LeadNivelC`.
+Como todo mundo responde as duas perguntas, **todas as quedas do funil são
+gargalo de verdade** — não tem filtro proposital no meio. A Etapa 6 é o último
+passo antes da classificação.
 
 ## CRM
 
-Webhook do CRM (Green Hub), disparado em dois momentos: **depois do telefone**
-(cria o card, garante o lead mesmo se ela abandonar) e **no final** (completa as
-respostas). A dedupe é por telefone — a segunda chamada atualiza o mesmo card.
+Webhook do CRM (Green Hub), disparado em **três** momentos: depois do telefone
+(cria o card), depois do faturamento (grava a faixa mesmo se ela largar na
+pergunta seguinte) e no final (completa com o investimento). A dedupe é por
+telefone — as chamadas seguintes atualizam o mesmo card, não duplicam.
 
 Campos enviados: `nome_e_sobrenome`, `instagram`, `whatsapp` (número),
 `qual_seu_faturamento_medio_mensal`, `investiria_1000_reais_em_anuncio`.
 
-No nível C, como a pergunta do investimento não é feita, o campo recebe
-`"Não perguntado (fatura até 30k)"` em vez de vir vazio.
+`investiria_1000_reais_em_anuncio` só fica vazio quando a pessoa responde o
+faturamento e abandona antes da última pergunta.
 
 ## Calendly
 

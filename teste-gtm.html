@@ -561,13 +561,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const WEBHOOK_KEY         = "276f6f75-446f-458b-b602-42ecbc7393b9";
   const WEBHOOK_PIPELINE_ID = "bef88278-3275-406f-b53c-a7782f527569";
   const CALENDLY_URL        = "https://calendly.com/assessoriagreenlab/30min";
-  // Classificação do lead:
-  //   NÍVEL C — fatura até 30k: desqualificado, nem chega a ver a pergunta do
-  //             investimento; vai direto pra tela de obrigado.
-  //   NÍVEL A — fatura acima de 30k E toparia investir ~R$1.000/mês.
-  //   NÍVEL B — fatura acima de 30k, mas não é o momento de investir.
+  // Classificação do lead — quem decide é a resposta do investimento:
+  //   NÍVEL C — respondeu que não é o momento de investir (qualquer
+  //             faturamento). Vai pra tela de obrigado, sem calendário.
+  //   NÍVEL A — toparia investir E fatura acima de 30k.
+  //   NÍVEL B — toparia investir, mas fatura até 30k.
   // A e B veem o calendário; C não.
-  const FATURAMENTO_NIVEL_C = ['ate_30k'];
+  const FATURAMENTO_NIVEL_B = ['ate_30k'];
+
+  function nivelDoLead() {
+    if (answers.investimento !== 'sim') return 'C';
+    return FATURAMENTO_NIVEL_B.includes(answers.faturamento) ? 'B' : 'A';
+  }
   // Notificação de WhatsApp via CallMeBot a cada lead qualificado/desqualificado.
   const CALLMEBOT_RECIPIENTS = []; // TESTE: nao avisa o time
   // =========================================================
@@ -648,10 +653,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             instagram: answers.instagram,
             whatsapp: Number(answers.whatsapp) || answers.whatsapp,
             qual_seu_faturamento_medio_mensal: answers.faturamentoLabel,
-            // Nível C nunca vê essa pergunta — em vez de deixar o campo vazio
-            // (que no card parece erro), o CRM recebe o porquê.
-            investiria_1000_reais_em_anuncio: answers.investimentoLabel ||
-              (answers.nivel === 'C' ? 'Não perguntado (fatura até 30k)' : '')
+            // Fica vazio só quando ela responde o faturamento e larga o
+            // formulário antes de responder o investimento.
+            investiria_1000_reais_em_anuncio: answers.investimentoLabel
           }
         })
       });
@@ -1093,12 +1097,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       updateProgress();
       pushDataLayerEvent('colocou_faturamento', { faturamento: answers.faturamento });
 
-      // até 30k encerra aqui como nível C — não faz sentido perguntar de
-      // investimento pra quem não tem faturamento pra bancar
-      if (FATURAMENTO_NIVEL_C.includes(answers.faturamento)) {
-        fecharLead('C');
-        return;
-      }
+      // Atualiza o CRM já com a faixa de faturamento: se ela largar o
+      // formulário na pergunta do investimento, o card não fica sem essa
+      // resposta.
+      sendToWebhook();
+
       showScreen('screen-investimento');
     });
   });
@@ -1111,7 +1114,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       answers.investimento = btn.dataset.value;
       answers.investimentoLabel = btn.querySelector('.option-label').textContent;
       pushDataLayerEvent('colocou_investimento', { investimento: answers.investimento });
-      fecharLead(answers.investimento === 'sim' ? 'A' : 'B');
+      fecharLead(nivelDoLead());
     });
   });
 
@@ -1141,7 +1144,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       showScreen('screen-thanks');
       return;
     }
-    mostrarAgendamento(nivel === 'A' ? 'Parabéns pelo interesse!' : 'Obrigado pelo interesse!');
+    mostrarAgendamento('Parabéns pelo interesse!');
   }
 
   // ---------- Calendly embutido ----------
